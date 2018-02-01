@@ -547,6 +547,7 @@ namespace Microsoft.VisualStudio.TestPlatform.CrossPlatEngine.Client
             if (!this.isDisposed)
             {
                 this.loggerEvents.CompleteTestRun(e.TestRunStatistics, e.IsCanceled, e.IsAborted, e.Error, e.AttachmentSets, e.ElapsedTimeInRunningTests);
+                this.Dispose();
             }
         }
 
@@ -583,6 +584,7 @@ namespace Microsoft.VisualStudio.TestPlatform.CrossPlatEngine.Client
             if (!this.isDisposed)
             {
                 this.loggerEvents.RaiseDiscoveryComplete(e);
+                this.Dispose();
             }
         }
 
