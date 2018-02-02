@@ -4,11 +4,10 @@
 namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
 {
     using Microsoft.VisualStudio.TestPlatform.Common.Interfaces;
+    using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;
+    using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities.Interfaces;
+    using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities.ObjectModel;
     using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// Registers the discovery and test run events for designmode flow
@@ -16,10 +15,17 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
     public class DesignModeTestEventsRegistrar : ITestDiscoveryEventsRegistrar, ITestRunEventsRegistrar
     {
         private IDesignModeClient designModeClient;
+        private IDataSerializer dataSerializer;
 
-        public DesignModeTestEventsRegistrar(IDesignModeClient designModeClient)
+        public DesignModeTestEventsRegistrar(IDesignModeClient designModeClient) :
+            this(designModeClient, JsonDataSerializer.Instance)
+        {
+        }
+
+        internal DesignModeTestEventsRegistrar(IDesignModeClient designModeClient, IDataSerializer dataSerializer)
         {
             this.designModeClient = designModeClient;
+            this.dataSerializer = dataSerializer;
         }
 
         #region ITestDiscoveryEventsRegistrar
@@ -57,6 +63,14 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
         /// <param name="rawMessage">RawMessage from the testhost</param>
         private void OnRawMessageReceived(object sender, string rawMessage)
         {
+            var message = this.dataSerializer.DeserializeMessage(rawMessage);
+
+            if (string.Equals(message?.MessageType, MessageType.ExecutionComplete) ||
+                string.Equals(message?.MessageType, MessageType.DiscoveryComplete))
+            {
+                (sender as IRequest)?.WaitForCompletion();
+            }
+
             // Directly send the data to translation layer instead of deserializing it here
             this.designModeClient.SendRawMessage(rawMessage);
         }

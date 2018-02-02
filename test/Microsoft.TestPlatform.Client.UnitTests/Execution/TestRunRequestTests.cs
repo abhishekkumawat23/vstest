@@ -325,11 +325,11 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.UnitTests.Execution
         [TestMethod]
         public void HandleRawMessageShouldAddVSTestDataPointsIfTelemetryOptedIn()
         {
-            bool onDiscoveryCompleteInvoked = true;
+            bool onTestCompleteInvoked = false;
             this.mockRequestData.Setup(x => x.IsTelemetryOptedIn).Returns(true);
             this.testRunRequest.OnRawMessageReceived += (object sender, string e) =>
                 {
-                    onDiscoveryCompleteInvoked = true;
+                    onTestCompleteInvoked = true;
                 };
 
             this.mockDataSerializer.Setup(x => x.DeserializeMessage(It.IsAny<string>()))
@@ -341,11 +341,14 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.UnitTests.Execution
                     TestRunCompleteArgs = new TestRunCompleteEventArgs(null, false, false, null, null, TimeSpan.MinValue)
                 });
 
+            this.testRunRequest.ExecuteAsync();
+            var testRunCompeleteEventsArgs = new TestRunCompleteEventArgs(new TestRunStatistics(1, null), false, false, null, null, TimeSpan.FromSeconds(0));
+            this.testRunRequest.HandleTestRunComplete(testRunCompeleteEventsArgs, null, null, null);
             this.testRunRequest.HandleRawMessage(string.Empty);
 
             this.mockDataSerializer.Verify(x => x.SerializePayload(It.IsAny<string>(), It.IsAny<TestRunCompletePayload>()), Times.Once);
             this.mockRequestData.Verify(x => x.MetricsCollection, Times.AtLeastOnce);
-            Assert.IsTrue(onDiscoveryCompleteInvoked);
+            Assert.IsTrue(onTestCompleteInvoked);
         }
 
         [TestMethod]
@@ -511,18 +514,6 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.UnitTests.Execution
 
             loggerManager.Verify(lm => lm.HandleTestRunStatsChange(testRunChangedEventArgs), Times.Once);
             loggerManager.Verify(lm => lm.HandleTestRunComplete(It.IsAny<TestRunCompleteEventArgs>()), Times.Once);
-        }
-
-        [TestMethod]
-        public void HandleTestRunCompleteShouldDisposeLoggerManager()
-        {
-            var testRunCompleteEvent = new TestRunCompleteEventArgs(new TestRunStatistics(1, null), false, false, null,
-                null, TimeSpan.FromSeconds(0));
-
-            testRunRequest.ExecuteAsync();
-            testRunRequest.HandleTestRunComplete(testRunCompleteEvent, null, null, null);
-
-            loggerManager.Verify(lm => lm.Dispose(), Times.Once);
         }
 
         [TestMethod]

@@ -162,16 +162,6 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.UnitTests.Discovery
         }
 
         [TestMethod]
-        public void HandleDiscoveryCompleteShouldDisposeLoggerManager()
-        {
-            var discoveryCompleteEventArgs = new DiscoveryCompleteEventArgs(1, false);
-            var eventsHandler = this.discoveryRequest as ITestDiscoveryEventsHandler2;
-            eventsHandler.HandleDiscoveryComplete(discoveryCompleteEventArgs, Enumerable.Empty<TestCase>());
-
-            loggerManager.Verify(lm => lm.Dispose(), Times.Once);
-        }
-
-        [TestMethod]
         public void HandleDiscoveryCompleteShouldCloseDiscoveryManagerBeforeRaiseDiscoveryComplete()
         {
             var events = new List<string>();
@@ -272,6 +262,7 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.UnitTests.Discovery
             this.mockDataSerializer.Setup(x => x.DeserializePayload<DiscoveryCompletePayload>(It.IsAny<Message>()))
                 .Returns(new DiscoveryCompletePayload());
 
+            this.discoveryRequest.HandleDiscoveryComplete(new DiscoveryCompleteEventArgs(1, false), Enumerable.Empty<TestCase>());
             this.discoveryRequest.HandleRawMessage(string.Empty);
 
             this.mockDataSerializer.Verify(x => x.SerializePayload(It.IsAny<string>(), It.IsAny<DiscoveryCompletePayload>()), Times.Once);

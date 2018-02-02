@@ -140,6 +140,25 @@ namespace TestPlatform.CrossPlatEngine.UnitTests
         }
 
         [TestMethod]
+        public void HandleTestRunCompleteShouldInvokeDispose()
+        {
+            counter = 0;
+            waitHandle.Reset();
+            // setup TestLogger
+            var testLoggerManager = new DummyTestLoggerManager();
+            testLoggerManager.InitializeLoggerByUri(new Uri(loggerUri), new Dictionary<string, string>());
+            testLoggerManager.EnableLogging();
+
+            testLoggerManager.HandleTestRunComplete(new TestRunCompleteEventArgs(null, false, false, null, null, new TimeSpan()));
+            waitHandle.WaitOne();
+
+            // This will not cause test run complete event as we dispose the logger in handleTestRunComplete.
+            testLoggerManager.HandleTestRunComplete(new TestRunCompleteEventArgs(null, false, false, null, null, new TimeSpan()));
+
+            Assert.AreEqual(counter, 1);
+        }
+
+        [TestMethod]
         public void HandleTestRunCompleteShouldInvokeTestRunCompleteHandlerOfLoggers()
         {
             counter = 0;
@@ -474,6 +493,30 @@ namespace TestPlatform.CrossPlatEngine.UnitTests
 
             // Assertions when test run events registered
             Assert.AreEqual(counter, 0);
+        }
+
+        [TestMethod]
+        public void HandleDiscoveryCompleteShouldInvokeDispose()
+        {
+            counter = 0;
+            waitHandle.Reset();
+
+            DiscoveryCompleteEventArgs discoveryCompleteEventArgs = new DiscoveryCompleteEventArgs(2, false);
+
+            // setup TestLogger
+            var testLoggerManager = new DummyTestLoggerManager();
+            testLoggerManager.InitializeLoggerByUri(new Uri(loggerUri), new Dictionary<string, string>());
+            testLoggerManager.EnableLogging();
+
+            testLoggerManager.HandleDiscoveryComplete(discoveryCompleteEventArgs);
+
+            // Assertions when discovery events registered
+            waitHandle.WaitOne();
+
+            // This call will not cause discovery compelte event to trigger as loggerManager is already disposed.
+            testLoggerManager.HandleDiscoveryComplete(discoveryCompleteEventArgs);
+
+            Assert.AreEqual(counter, 1);
         }
 
         /// <summary>

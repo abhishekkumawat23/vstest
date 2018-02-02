@@ -413,6 +413,7 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.Execution
                     if (lastChunkArgs != null)
                     {
                         // Raised the changed event also
+                        this.LoggerManager.HandleTestRunStatsChange(lastChunkArgs);
                         this.OnRunStatsChange.SafeInvoke(this, lastChunkArgs, "TestRun.RunStatsChanged");
                     }
 
@@ -429,6 +430,7 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.Execution
                     // Ignore the time sent (runCompleteArgs.ElapsedTimeInRunningTests) 
                     // by either engines - as both calculate at different points
                     // If we use them, it would be an incorrect comparison between TAEF and Rocksteady
+                    this.LoggerManager.HandleTestRunComplete(runCompletedEvent);
                     this.OnRunCompletion.SafeInvoke(this, runCompletedEvent, "TestRun.TestRunComplete");
                 }
                 finally
@@ -541,12 +543,12 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.Execution
         public void HandleRawMessage(string rawMessage)
         {
             var message = this.dataSerializer.DeserializeMessage(rawMessage);
-            var testRunCompletePayload = string.Equals(message.MessageType, MessageType.ExecutionComplete) ?
-                this.dataSerializer.DeserializePayload<TestRunCompletePayload>(message) : null;
 
             // Add telemetry
-            if (this.requestData.IsTelemetryOptedIn && string.Equals(message.MessageType, MessageType.ExecutionComplete))
+            if (this.requestData.IsTelemetryOptedIn && string.Equals(message?.MessageType, MessageType.ExecutionComplete))
             {
+                var testRunCompletePayload = this.dataSerializer.DeserializePayload<TestRunCompletePayload>(message);
+
                 if (testRunCompletePayload != null)
                 {
                     if (testRunCompletePayload.TestRunCompleteArgs?.Metrics == null)
@@ -582,33 +584,6 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.Execution
                         MessageType.ExecutionComplete,
                         testRunCompletePayload);
                 }
-            }
-
-            // Note: We are invoking loggerManager.HandleTestRunComplete from HandleRawMessage instead of HandleTestRunComplete
-            // because design mode listens to OnRawMessageReceived only and not other TestRunRequest events.
-            // We want to invoke loggerManager.HandleTestRunComplete before passing test run complete raw message to design mode
-            // so that loggers can handle test run complete event and save necessary result attachments.
-
-            // Sending events to loggerManager.
-            if (testRunCompletePayload != null)
-            {
-                // Send last chunk to loggerManager
-                if (testRunCompletePayload.LastRunTests != null)
-                {
-                    this.LoggerManager.HandleTestRunStatsChange(testRunCompletePayload.LastRunTests);
-                }
-
-                // Send test run complete event to loggerManager.
-                var runCompletedEventArgs = new TestRunCompleteEventArgs(
-                    testRunCompletePayload.TestRunCompleteArgs.TestRunStatistics,
-                    testRunCompletePayload.TestRunCompleteArgs.IsCanceled,
-                    testRunCompletePayload.TestRunCompleteArgs.IsAborted,
-                    testRunCompletePayload.TestRunCompleteArgs.Error,
-                    // This is required as TMI adapter is sending attachments as List which cannot be typecasted to Collection.
-                    testRunCompletePayload.RunAttachments != null ? new Collection<AttachmentSet>(testRunCompletePayload.RunAttachments.ToList()) : null,
-                    this.runRequestTimeTracker.Elapsed);
-
-                this.LoggerManager.HandleTestRunComplete(runCompletedEventArgs);
             }
 
             this.OnRawMessageReceived?.Invoke(this, rawMessage);

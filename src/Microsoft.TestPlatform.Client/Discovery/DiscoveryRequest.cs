@@ -270,9 +270,11 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.Discovery
                     if (lastChunk != null && lastChunk.Count() > 0)
                     {
                         var discoveredTestsEvent = new DiscoveredTestsEventArgs(lastChunk);
+                        this.LoggerManager.HandleDiscoveredTests(discoveredTestsEvent);
                         this.OnDiscoveredTests.SafeInvoke(this, discoveredTestsEvent, "DiscoveryRequest.DiscoveryComplete");
                     }
 
+                    this.LoggerManager.HandleDiscoveryComplete(discoveryCompleteEventArgs);
                     this.OnDiscoveryComplete.SafeInvoke(this, discoveryCompleteEventArgs, "DiscoveryRequest.DiscoveryComplete");
                 }
                 finally
@@ -392,12 +394,12 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.Discovery
         public void HandleRawMessage(string rawMessage)
         {
             var message = this.dataSerializer.DeserializeMessage(rawMessage);
-            var discoveryCompletePayload = string.Equals(message.MessageType, MessageType.DiscoveryComplete) ?
-                this.dataSerializer.DeserializePayload<DiscoveryCompletePayload>(message) : null;
 
             // Add telemetry
-            if (this.requestData.IsTelemetryOptedIn && string.Equals(message.MessageType, MessageType.DiscoveryComplete))
+            if (this.requestData.IsTelemetryOptedIn && string.Equals(message?.MessageType, MessageType.DiscoveryComplete))
             {
+                var discoveryCompletePayload = this.dataSerializer.DeserializePayload<DiscoveryCompletePayload>(message);
+
                 if (discoveryCompletePayload != null)
                 {
                     if (discoveryCompletePayload.Metrics == null)
@@ -433,30 +435,6 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.Discovery
                         MessageType.DiscoveryComplete,
                         discoveryCompletePayload);
                 }
-            }
-
-            // Note: We are invoking loggerManager.HandleDiscoveryComplete from HandleRawMessage instead of HandleDiscoveryComplete
-            // because design mode listens to OnRawMessageReceived only and not other DiscoveryRequest events.
-            // We want to invoke loggerManager.HandleTestRunComplete before passing test run complete raw message to design mode
-            // so that loggers can handle test run complete event and save necessary result attachments.
-
-            // Sending events to loggerManager.
-            if (discoveryCompletePayload != null)
-            {
-                // Send last chunk to loggerManager
-                if (discoveryCompletePayload.LastDiscoveredTests != null && discoveryCompletePayload.LastDiscoveredTests.Any())
-                {
-                    var discoveredTestsEvent = new DiscoveredTestsEventArgs(discoveryCompletePayload.LastDiscoveredTests);
-                    this.LoggerManager.HandleDiscoveredTests(discoveredTestsEvent);
-                }
-
-                // Send discovery complete event to loggerManager.
-                var discoveryCompleteEventArgs = new DiscoveryCompleteEventArgs(
-                    discoveryCompletePayload.TotalTests,
-                    discoveryCompletePayload.IsAborted);
-                discoveryCompleteEventArgs.Metrics = discoveryCompletePayload.Metrics;
-
-                this.LoggerManager.HandleDiscoveryComplete(discoveryCompleteEventArgs);
             }
 
             this.OnRawMessageReceived?.Invoke(this, rawMessage);
