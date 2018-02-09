@@ -377,12 +377,13 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
                             MessageType.StartDiscovery,
                             new DiscoveryRequestPayload() { Sources = sources, RunSettings = runSettings, TestPlatformOptions = options },
                             this.protocolVersion);
-                var isDiscoveryComplete = false;
+                var isDiscoveryFinshed = false;
+                var discoveryCompletePayload = default(DiscoveryCompletePayload);
 
                 // Cycle through the messages that the vstest.console sends.
                 // Currently each of the operations are not separate tasks since they should not each take much time.
                 // This is just a notification.
-                while (!isDiscoveryComplete)
+                while (!isDiscoveryFinshed)
                 {
                     var message = this.TryReceiveMessage();
 
@@ -394,18 +395,22 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
                     }
                     else if (string.Equals(MessageType.DiscoveryComplete, message.MessageType))
                     {
-                        var discoveryCompletePayload =
+                        discoveryCompletePayload =
                             this.dataSerializer.DeserializePayload<DiscoveryCompletePayload>(message);
-
-                        var discoveryCompleteEventArgs = new DiscoveryCompleteEventArgs(discoveryCompletePayload.TotalTests, discoveryCompletePayload.IsAborted);
+                    }
+                    else if (string.Equals(MessageType.DiscoveryFinish, message.MessageType))
+                    {
+                        var payload = discoveryCompletePayload ?? this.dataSerializer.DeserializePayload<DiscoveryCompletePayload>(message);
+                        var discoveryFinishEventArgs = new DiscoveryCompleteEventArgs(payload.TotalTests, payload.IsAborted);
 
                         // Adding Metrics From VsTestConsole
-                        discoveryCompleteEventArgs.Metrics = discoveryCompletePayload.Metrics;
+                        discoveryFinishEventArgs.Metrics = payload.Metrics;
 
                         eventHandler.HandleDiscoveryComplete(
-                            discoveryCompleteEventArgs,
-                            discoveryCompletePayload.LastDiscoveredTests);
-                        isDiscoveryComplete = true;
+                            discoveryFinishEventArgs,
+                            payload.LastDiscoveredTests);
+
+                        isDiscoveryFinshed = true;
                     }
                     else if (string.Equals(MessageType.TestMessage, message.MessageType))
                     {
@@ -437,12 +442,13 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
                             MessageType.StartDiscovery,
                             new DiscoveryRequestPayload() { Sources = sources, RunSettings = runSettings, TestPlatformOptions = options },
                             this.protocolVersion);
-                var isDiscoveryComplete = false;
+                var isDiscoveryFinshed = false;
+                var discoveryCompletePayload = default(DiscoveryCompletePayload);
 
                 // Cycle through the messages that the vstest.console sends.
                 // Currently each of the operations are not separate tasks since they should not each take much time.
                 // This is just a notification.
-                while (!isDiscoveryComplete)
+                while (!isDiscoveryFinshed)
                 {
                     var message = await this.TryReceiveMessageAsync();
 
@@ -454,18 +460,22 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
                     }
                     else if (string.Equals(MessageType.DiscoveryComplete, message.MessageType))
                     {
-                        var discoveryCompletePayload =
+                        discoveryCompletePayload =
                             this.dataSerializer.DeserializePayload<DiscoveryCompletePayload>(message);
+                    }
+                    else if (string.Equals(MessageType.DiscoveryFinish, message.MessageType))
+                    {
+                        var discoveryFinishPayload = discoveryCompletePayload ?? this.dataSerializer.DeserializePayload<DiscoveryCompletePayload>(message);
+                        var discoveryFinishEventArgs = new DiscoveryCompleteEventArgs(discoveryFinishPayload.TotalTests, discoveryFinishPayload.IsAborted);
 
-                        var discoveryCompleteEventArgs = new DiscoveryCompleteEventArgs(discoveryCompletePayload.TotalTests, discoveryCompletePayload.IsAborted);
-
-                        // Adding Metrics from VsTestConsole
-                        discoveryCompleteEventArgs.Metrics = discoveryCompletePayload.Metrics;
+                        // Adding Metrics From VsTestConsole
+                        discoveryFinishEventArgs.Metrics = discoveryFinishPayload.Metrics;
 
                         eventHandler.HandleDiscoveryComplete(
-                            discoveryCompleteEventArgs,
-                            discoveryCompletePayload.LastDiscoveredTests);
-                        isDiscoveryComplete = true;
+                            discoveryFinishEventArgs,
+                            discoveryFinishPayload.LastDiscoveredTests);
+
+                        isDiscoveryFinshed = true;
                     }
                     else if (string.Equals(MessageType.TestMessage, message.MessageType))
                     {
@@ -494,11 +504,12 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
             try
             {
                 this.communicationManager.SendMessage(messageType, payload, this.protocolVersion);
-                var isTestRunComplete = false;
+                var isTestRunFinished = false;
+                var testRunCompletePayload = default(TestRunCompletePayload);
 
                 // Cycle through the messages that the testhost sends. 
                 // Currently each of the operations are not separate tasks since they should not each take much time. This is just a notification.
-                while (!isTestRunComplete)
+                while (!isTestRunFinished)
                 {
                     var message = this.TryReceiveMessage();
 
@@ -510,15 +521,21 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
                     }
                     else if (string.Equals(MessageType.ExecutionComplete, message.MessageType))
                     {
-                        var testRunCompletePayload =
+                        testRunCompletePayload =
                             this.dataSerializer.DeserializePayload<TestRunCompletePayload>(message);
+                    }
+                    else if (string.Equals(MessageType.ExecutionFinish, message.MessageType))
+                    {
+                        var testRunFinishPayload = testRunCompletePayload ??
+                                      this.dataSerializer.DeserializePayload<TestRunCompletePayload>(message);
 
                         eventHandler.HandleTestRunComplete(
-                            testRunCompletePayload.TestRunCompleteArgs,
-                            testRunCompletePayload.LastRunTests,
-                            testRunCompletePayload.RunAttachments,
-                            testRunCompletePayload.ExecutorUris);
-                        isTestRunComplete = true;
+                            testRunFinishPayload.TestRunCompleteArgs,
+                            testRunFinishPayload.LastRunTests,
+                            testRunFinishPayload.RunAttachments,
+                            testRunFinishPayload.ExecutorUris);
+
+                        isTestRunFinished = true;
                     }
                     else if (string.Equals(MessageType.TestMessage, message.MessageType))
                     {
@@ -548,11 +565,12 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
             try
             {
                 this.communicationManager.SendMessage(messageType, payload, this.protocolVersion);
-                var isTestRunComplete = false;
+                var isTestRunFinished = false;
+                var testRunCompletePayload = default(TestRunCompletePayload);
 
                 // Cycle through the messages that the testhost sends. 
                 // Currently each of the operations are not separate tasks since they should not each take much time. This is just a notification.
-                while (!isTestRunComplete)
+                while (!isTestRunFinished)
                 {
                     var message = await this.TryReceiveMessageAsync();
 
@@ -564,15 +582,21 @@ namespace Microsoft.TestPlatform.VsTestConsole.TranslationLayer
                     }
                     else if (string.Equals(MessageType.ExecutionComplete, message.MessageType))
                     {
-                        var testRunCompletePayload =
+                        testRunCompletePayload =
                             this.dataSerializer.DeserializePayload<TestRunCompletePayload>(message);
+                    }
+                    else if (string.Equals(MessageType.ExecutionFinish, message.MessageType))
+                    {
+                        var testRunFinishPayload = testRunCompletePayload ??
+                                                   this.dataSerializer.DeserializePayload<TestRunCompletePayload>(message);
 
                         eventHandler.HandleTestRunComplete(
-                            testRunCompletePayload.TestRunCompleteArgs,
-                            testRunCompletePayload.LastRunTests,
-                            testRunCompletePayload.RunAttachments,
-                            testRunCompletePayload.ExecutorUris);
-                        isTestRunComplete = true;
+                            testRunFinishPayload.TestRunCompleteArgs,
+                            testRunFinishPayload.LastRunTests,
+                            testRunFinishPayload.RunAttachments,
+                            testRunFinishPayload.ExecutorUris);
+
+                        isTestRunFinished = true;
                     }
                     else if (string.Equals(MessageType.TestMessage, message.MessageType))
                     {

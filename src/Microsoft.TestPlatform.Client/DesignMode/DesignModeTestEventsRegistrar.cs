@@ -33,11 +33,13 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
         public void RegisterDiscoveryEvents(IDiscoveryRequest discoveryRequest)
         {
             discoveryRequest.OnRawMessageReceived += OnRawMessageReceived;
+            discoveryRequest.OnDiscoveryComplete += OnDiscoveryComplete;
         }
 
         public void UnregisterDiscoveryEvents(IDiscoveryRequest discoveryRequest)
         {
             discoveryRequest.OnRawMessageReceived -= OnRawMessageReceived;
+            discoveryRequest.OnDiscoveryComplete -= OnDiscoveryComplete;
         }
 
         #endregion
@@ -47,11 +49,13 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
         public void RegisterTestRunEvents(ITestRunRequest testRunRequest)
         {
             testRunRequest.OnRawMessageReceived += OnRawMessageReceived;
+            testRunRequest.OnRunCompletion += OnRunCompletion;
         }
 
         public void UnregisterTestRunEvents(ITestRunRequest testRunRequest)
         {
             testRunRequest.OnRawMessageReceived -= OnRawMessageReceived;
+            testRunRequest.OnRunCompletion -= OnRunCompletion;
         }
 
         #endregion
@@ -63,16 +67,31 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
         /// <param name="rawMessage">RawMessage from the testhost</param>
         private void OnRawMessageReceived(object sender, string rawMessage)
         {
-            var message = this.dataSerializer.DeserializeMessage(rawMessage);
-
-            if (string.Equals(message?.MessageType, MessageType.ExecutionComplete) ||
-                string.Equals(message?.MessageType, MessageType.DiscoveryComplete))
-            {
-                (sender as IRequest)?.WaitForCompletion();
-            }
-
             // Directly send the data to translation layer instead of deserializing it here
             this.designModeClient.SendRawMessage(rawMessage);
+        }
+
+        private void OnRunCompletion(object sender, TestRunCompleteEventArgs e)
+        {
+            var payload = new TestRunCompletePayload()
+            {
+                TestRunCompleteArgs = e
+            };
+
+            this.designModeClient.SendMessage(MessageType.ExecutionFinish, payload);
+        }
+
+        private void OnDiscoveryComplete(object sender, DiscoveryCompleteEventArgs e)
+        {
+            var payload = new DiscoveryCompletePayload()
+            {
+                TotalTests = e.TotalCount,
+                LastDiscoveredTests = null,
+                IsAborted = e.IsAborted,
+                Metrics = e.Metrics
+            };
+
+            this.designModeClient.SendMessage(MessageType.DiscoveryFinish, payload);
         }
     }
 }

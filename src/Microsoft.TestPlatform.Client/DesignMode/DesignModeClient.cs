@@ -273,6 +273,11 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
             }
         }
 
+        public void SendMessage(string messageType, object payload)
+        {
+            this.communicationManager.SendMessage(messageType, payload);
+        }
+
         /// <summary>
         /// Send the raw messages to IDE
         /// </summary>
@@ -312,7 +317,7 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
                     };
 
                     // Send run complete to translation layer
-                    this.communicationManager.SendMessage(MessageType.ExecutionComplete, runCompletePayload);
+                    this.communicationManager.SendMessage(MessageType.ExecutionFinish, runCompletePayload);
                 }
             });
         }
@@ -345,7 +350,7 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
                         };
 
                         // Send run complete to translation layer
-                        this.communicationManager.SendMessage(MessageType.DiscoveryComplete, payload);
+                        this.communicationManager.SendMessage(MessageType.DiscoveryFinish, payload);
                     }
                 });
         }

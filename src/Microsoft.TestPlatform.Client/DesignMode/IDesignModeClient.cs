@@ -18,6 +18,8 @@ namespace Microsoft.VisualStudio.TestPlatform.Client.DesignMode
         /// <param name="port">port number to connect</param>
         void ConnectToClientAndProcessRequests(int port, ITestRequestManager testRequestManager);
 
+        void SendMessage(string messageType, object payload);
+
         /// <summary>
         /// Send the raw messages to IDE
         /// </summary>

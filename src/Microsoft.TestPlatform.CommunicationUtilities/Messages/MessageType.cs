@@ -64,6 +64,11 @@ namespace Microsoft.VisualStudio.TestPlatform.CommunicationUtilities.ObjectModel
         public const string DiscoveryComplete = "TestDiscovery.Completed";
 
         /// <summary>
+        /// The discovery finish.
+        /// </summary>
+        public const string DiscoveryFinish = "TestDiscovery.Finished";
+
+        /// <summary>
         /// The session start.
         /// </summary>
         public const string ExecutionInitialize = "TestExecution.Initialize";
@@ -97,6 +102,11 @@ namespace Microsoft.VisualStudio.TestPlatform.CommunicationUtilities.ObjectModel
         /// The execution complete.
         /// </summary>
         public const string ExecutionComplete = "TestExecution.Completed";
+
+        /// <summary>
+        /// The execution finish.
+        /// </summary>
+        public const string ExecutionFinish = "TestExecution.Finished";
 
         /// <summary>
         /// The message to get runner process startInfo for run all tests in given sources
